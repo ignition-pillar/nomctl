@@ -17,6 +17,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/tyler-smith/go-bip39"
 	"github.com/urfave/cli/v2"
+	"github.com/zenon-network/go-zenon/common/types"
 	"github.com/zenon-network/go-zenon/wallet"
 	//"github.com/faith/color"
 	// TODO color
@@ -250,6 +251,29 @@ func main() {
 		znnCliWalletList,
 	}
 
+	utilsValidateAddress := &cli.Command{
+		Name:  "validate-address",
+		Usage: "",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 1 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("validate-address address")
+				return nil
+			}
+			a := cCtx.Args().Get(0)
+			address, err := types.ParseAddress(a)
+			if err != nil {
+				return err
+			}
+			fmt.Println(address, "is a valid address")
+			return nil
+		},
+	}
+
+	utilsSubcommands := []*cli.Command{
+		utilsValidateAddress,
+	}
+
 	app := &cli.App{
 		Name:  "nomctl",
 		Usage: "A community controller for the Network of Momentum",
@@ -295,6 +319,11 @@ func main() {
 						Usage:   "Prints detailed information about the action that it performs",
 					},
 				},
+			},
+			{
+				Name:        "utils",
+				Usage:       "A collection of helper utilities",
+				Subcommands: utilsSubcommands,
 			},
 		},
 	}
