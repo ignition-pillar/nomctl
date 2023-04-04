@@ -22,6 +22,8 @@ import (
 	// TODO color
 )
 
+const QsrDecimals = 8
+
 func connect(url string, chainId int) (*zdk.Zdk, error) {
 	rpc, err := client.NewClient(url, client.ChainIdentifier(uint64(chainId)))
 	if err != nil {
@@ -270,9 +272,9 @@ func main() {
 			}
 			currentPlasma := plasmaInfo.CurrentPlasma
 			maxPlasma := plasmaInfo.MaxPlasma
-			qsrAmount := plasmaInfo.QsrAmount
+			formattedQsrAmount := formatAmount(plasmaInfo.QsrAmount, QsrDecimals)
 
-			fmt.Printf("%s has %v/%v plasma with %v QSR fused.\n", kp.Address(), currentPlasma, maxPlasma, qsrAmount)
+			fmt.Printf("%s has %v/%v plasma with %v QSR fused.\n", kp.Address(), currentPlasma, maxPlasma, formattedQsrAmount)
 			return nil
 		},
 	}
