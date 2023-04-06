@@ -23,6 +23,8 @@ import (
 	// TODO color
 )
 
+const QsrDecimals = 8
+
 func connect(url string, chainId int) (*zdk.Zdk, error) {
 	rpc, err := client.NewClient(url, client.ChainIdentifier(uint64(chainId)))
 	if err != nil {
@@ -243,12 +245,47 @@ func main() {
 			return nil
 		},
 	}
+	
+	znnCliPlasmaGet := &cli.Command{
+		Name: "plasma.get",
+		Usage: "",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 0 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("plasma.get")
+				return nil
+			}
+
+			kp, err := getZnnCliSigner(walletDir, cCtx)
+			if err != nil{
+				fmt.Println("Error getting signer:", err)
+				return err
+			}
+			z, err := connect(url, chainId)
+			if err != nil{
+				fmt.Println("Error connecting to Zenon Network:", err)
+				return err
+			}
+			plasmaInfo, err := z.Embedded.Plasma.Get(kp.Address())
+			if err != nil {
+				fmt.Println("Error getting plasma info:", err)
+				return err
+			}
+			currentPlasma := plasmaInfo.CurrentPlasma
+			maxPlasma := plasmaInfo.MaxPlasma
+			formattedQsrAmount := formatAmount(plasmaInfo.QsrAmount, QsrDecimals)
+
+			fmt.Printf("%s has %v/%v plasma with %v QSR fused.\n", kp.Address(), currentPlasma, maxPlasma, formattedQsrAmount)
+			return nil
+		},
+	}
 
 	znnCliSubcommands := []*cli.Command{
 		znnCliBalance,
 		znnCliFrontierMomentum,
 		znnCliWalletCreateNew,
 		znnCliWalletList,
+		znnCliPlasmaGet,
 	}
 
 	utilsValidateAddress := &cli.Command{
