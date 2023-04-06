@@ -4,6 +4,6 @@ nomctl:
 	go build -o build/nomctl main.go
 
 clean:
-	rm -r $(BUILDDIR)/
+	rm -r build/
 
-all: znnd
+all: nomctl
