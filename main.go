@@ -318,6 +318,83 @@ func main() {
 		},
 	}
 
+	znnCliPillarDelegate := &cli.Command{
+		Name:  "pillar.delegate",
+		Usage: "name",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 1 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("pillar.delegate name")
+				return nil
+			}
+
+			kp, err := getZnnCliSigner(walletDir, cCtx)
+			if err != nil {
+				fmt.Println("Error getting signer:", err)
+				return err
+			}
+			z, err := connect(url, chainId)
+			if err != nil {
+				fmt.Println("Error connecting to Zenon Network:", err)
+				return err
+			}
+
+			pillar := cCtx.Args().Get(0)
+
+			template, err := z.Embedded.Pillar.Delegate(pillar)
+			if err != nil {
+				fmt.Println("Error templating pillar delegate tx:", err)
+				return err
+			}
+			fmt.Println("Delegating to Pillar", pillar)
+			_, err = utils.Send(z, template, kp, false)
+			if err != nil {
+				fmt.Println("Error sending pillar delegate tx:", err)
+				return err
+			}
+
+			fmt.Println("Done")
+			return nil
+		},
+	}
+
+	znnCliPillarUndelegate := &cli.Command{
+		Name:  "pillar.undelegate",
+		Usage: "",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 0 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("pillar.undelegate")
+				return nil
+			}
+
+			kp, err := getZnnCliSigner(walletDir, cCtx)
+			if err != nil {
+				fmt.Println("Error getting signer:", err)
+				return err
+			}
+			z, err := connect(url, chainId)
+			if err != nil {
+				fmt.Println("Error connecting to Zenon Network:", err)
+				return err
+			}
+			template, err := z.Embedded.Pillar.Undelegate()
+			if err != nil {
+				fmt.Println("Error templating pillar undelegate tx:", err)
+				return err
+			}
+			fmt.Println("Undelegating ...")
+			_, err = utils.Send(z, template, kp, false)
+			if err != nil {
+				fmt.Println("Error sending pillar undelegate tx:", err)
+				return err
+			}
+
+			fmt.Println("Done")
+			return nil
+		},
+	}
+
 	znnCliPlasmaGet := &cli.Command{
 		Name:  "plasma.get",
 		Usage: "",
@@ -360,6 +437,8 @@ func main() {
 		znnCliPlasmaGet,
 		znnCliPillarList,
 		znnCliPillarCollect,
+		znnCliPillarDelegate,
+		znnCliPillarUndelegate,
 	}
 
 	utilsValidateAddress := &cli.Command{
