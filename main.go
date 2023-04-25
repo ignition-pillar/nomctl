@@ -245,9 +245,9 @@ func main() {
 			return nil
 		},
 	}
-	
+
 	znnCliPlasmaGet := &cli.Command{
-		Name: "plasma.get",
+		Name:  "plasma.get",
 		Usage: "",
 		Action: func(cCtx *cli.Context) error {
 			if cCtx.NArg() != 0 {
@@ -257,12 +257,12 @@ func main() {
 			}
 
 			kp, err := getZnnCliSigner(walletDir, cCtx)
-			if err != nil{
+			if err != nil {
 				fmt.Println("Error getting signer:", err)
 				return err
 			}
 			z, err := connect(url, chainId)
-			if err != nil{
+			if err != nil {
 				fmt.Println("Error connecting to Zenon Network:", err)
 				return err
 			}
