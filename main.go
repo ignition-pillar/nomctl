@@ -23,7 +23,10 @@ import (
 	// TODO color
 )
 
+const ZnnDecimals = 8
 const QsrDecimals = 8
+
+const rpcMaxPageSize = 1024
 
 func connect(url string, chainId int) (*zdk.Zdk, error) {
 	rpc, err := client.NewClient(url, client.ChainIdentifier(uint64(chainId)))
@@ -246,6 +249,36 @@ func main() {
 		},
 	}
 
+	znnCliPillarList := &cli.Command{
+		Name:  "pillar.list",
+		Usage: "",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 0 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("pillar.list")
+				return nil
+			}
+
+			z, err := connect(url, chainId)
+			if err != nil {
+				fmt.Println("Error connecting to Zenon Network:", err)
+				return err
+			}
+			pillarInfoList, err := z.Embedded.Pillar.GetAll(0, rpcMaxPageSize)
+			if err != nil {
+				fmt.Println("Error getting pillar list:", err)
+				return err
+			}
+
+			for _, p := range pillarInfoList.List {
+				fmt.Printf("#%d Pillar %s has a delegated weight of %s ZNN\n", p.Rank+1, p.Name, formatAmount(p.Weight, ZnnDecimals))
+				fmt.Printf("    Producer address %s\n", p.BlockProducingAddress)
+				fmt.Printf("    Momentums %d / %d\n", p.CurrentStats.ProducedMomentums, p.CurrentStats.ExpectedMomentums)
+			}
+			return nil
+		},
+	}
+
 	znnCliPlasmaGet := &cli.Command{
 		Name:  "plasma.get",
 		Usage: "",
@@ -286,6 +319,7 @@ func main() {
 		znnCliWalletCreateNew,
 		znnCliWalletList,
 		znnCliPlasmaGet,
+		znnCliPillarList,
 	}
 
 	utilsValidateAddress := &cli.Command{
