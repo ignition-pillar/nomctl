@@ -12,6 +12,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/ignition-pillar/go-zdk/client"
+	"github.com/ignition-pillar/go-zdk/utils"
 	signer "github.com/ignition-pillar/go-zdk/wallet"
 	"github.com/ignition-pillar/go-zdk/zdk"
 	"github.com/shopspring/decimal"
@@ -52,20 +53,21 @@ func getZnnCliSigner(walletDir string, cCtx *cli.Context) (signer.Signer, error)
 	}
 	if len(files) == 0 {
 		fmt.Println("Error! No keystore in the default directory")
-		return nil, nil
+		os.Exit(1)
+
 	} else if cCtx.IsSet("keyStore") {
 		keyStorePath = filepath.Join(walletDir, cCtx.String("keyStore"))
 		info, err := os.Stat(keyStorePath)
 		if os.IsNotExist(err) || info.IsDir() {
 			fmt.Println("Error! The keyStore", cCtx.String("keyStore"), "does not exist in the default directory")
-			return nil, nil
+			os.Exit(1)
 		}
 	} else if len(files) == 1 {
 		fmt.Println("Using the default keyStore", files[0].Name())
 		keyStorePath = filepath.Join(walletDir, files[0].Name())
 	} else {
 		fmt.Println("Error! Please provide a keyStore or an address. Use 'wallet.list' to list all available keyStores")
-		return nil, nil
+		os.Exit(1)
 	}
 
 	var passphrase string
@@ -88,7 +90,7 @@ func getZnnCliSigner(walletDir string, cCtx *cli.Context) (signer.Signer, error)
 	if err != nil {
 		if err == wallet.ErrWrongPassword {
 			fmt.Println("Error! Invalid passphrase for keyStore", cCtx.String("keyStore"))
-			return nil, nil
+			os.Exit(1)
 		}
 		return nil, err
 	}
@@ -279,6 +281,43 @@ func main() {
 		},
 	}
 
+	znnCliPillarCollect := &cli.Command{
+		Name:  "pillar.collect",
+		Usage: "",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 0 {
+				fmt.Println("Incorrect number of arguments. Expected:")
+				fmt.Println("pillar.collect")
+				return nil
+			}
+
+			kp, err := getZnnCliSigner(walletDir, cCtx)
+			if err != nil {
+				fmt.Println("Error getting signer:", err)
+				return err
+			}
+			z, err := connect(url, chainId)
+			if err != nil {
+				fmt.Println("Error connecting to Zenon Network:", err)
+				return err
+			}
+			template, err := z.Embedded.Pillar.CollectReward()
+			if err != nil {
+				fmt.Println("Error templating pillar collect tx:", err)
+				return err
+			}
+			_, err = utils.Send(z, template, kp, false)
+			if err != nil {
+				fmt.Println("Error sending pillar collect tx:", err)
+				return err
+			}
+
+			fmt.Println("Done")
+			fmt.Println("Use 'receiveAll' to collect your Pillar reward(s) after 1 momentum")
+			return nil
+		},
+	}
+
 	znnCliPlasmaGet := &cli.Command{
 		Name:  "plasma.get",
 		Usage: "",
@@ -320,6 +359,7 @@ func main() {
 		znnCliWalletList,
 		znnCliPlasmaGet,
 		znnCliPillarList,
+		znnCliPillarCollect,
 	}
 
 	utilsValidateAddress := &cli.Command{
