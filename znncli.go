@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -234,7 +233,7 @@ var znnCliWalletList = &cli.Command{
 			fmt.Println("wallet.list")
 			return nil
 		}
-		files, err := ioutil.ReadDir(walletDir)
+		files, err := os.ReadDir(walletDir)
 		if err != nil {
 			return err
 		}
