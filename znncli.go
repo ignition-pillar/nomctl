@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/ignition-pillar/go-zdk/utils"
+	"github.com/ignition-pillar/go-zdk/utils/template"
 	signer "github.com/ignition-pillar/go-zdk/wallet"
 	"github.com/tyler-smith/go-bip39"
 	"github.com/urfave/cli/v2"
@@ -77,6 +78,105 @@ func getZnnCliSigner(walletDir string, cCtx *cli.Context) (signer.Signer, error)
 
 	return kp, nil
 
+}
+
+var znnCliUnreceived = &cli.Command{
+	Name:  "unreceived",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("unreceived")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+
+		unreceived, err := z.Ledger.GetUnreceivedBlocksByAddress(kp.Address(), 0, 5)
+		if err != nil {
+			fmt.Println("Error fetching unreceived txs:", err)
+			return err
+		}
+		if len(unreceived.List) == 0 {
+			fmt.Println("Nothing to receive")
+			return nil
+		} else {
+			if unreceived.More {
+				fmt.Println("You have more than", unreceived.Count, "transaction(s) to receive")
+			} else {
+				fmt.Println("You have", unreceived.Count, "transaction(s) to receive")
+			}
+		}
+		fmt.Println("Showing the first", unreceived.Count)
+		for _, block := range unreceived.List {
+			fmt.Println("Unreceived", formatAmount(block.Amount, block.TokenInfo.Decimals), block.TokenInfo.TokenSymbol, "from", block.Address, "Use the hash", block.Hash, "to receive")
+		}
+		return nil
+	},
+}
+
+var znnCliReceiveAll = &cli.Command{
+	Name:  "receiveAll",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("receiveAll")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+
+		unreceived, err := z.Ledger.GetUnreceivedBlocksByAddress(kp.Address(), 0, 5)
+		if err != nil {
+			fmt.Println("Error fetching unreceived txs:", err)
+			return err
+		}
+		if len(unreceived.List) == 0 {
+			fmt.Println("Nothing to receive")
+			return nil
+		} else {
+			if unreceived.More {
+				fmt.Println("You have more than", unreceived.Count, "transaction(s) to receive")
+			} else {
+				fmt.Println("You have", unreceived.Count, "transaction(s) to receive")
+			}
+		}
+		fmt.Println("Please wait ...")
+
+		for unreceived.Count > 0 {
+			for _, block := range unreceived.List {
+				temp := template.Receive(1, uint64(chainId), block.Hash)
+				_, err = utils.Send(z, temp, kp, false)
+			}
+			unreceived, err = z.Ledger.GetUnreceivedBlocksByAddress(kp.Address(), 0, 5)
+			if err != nil {
+				fmt.Println("Error fetching unreceived txs:", err)
+				return err
+			}
+		}
+
+		fmt.Println("Done")
+		return nil
+	},
 }
 
 var znnCliBalance = &cli.Command{
@@ -277,6 +377,45 @@ var znnCliPillarList = &cli.Command{
 			fmt.Printf("    Producer address %s\n", p.BlockProducingAddress)
 			fmt.Printf("    Momentums %d / %d\n", p.CurrentStats.ProducedMomentums, p.CurrentStats.ExpectedMomentums)
 		}
+		return nil
+	},
+}
+
+var znnCliPillarUncollected = &cli.Command{
+	Name:  "pillar.uncollected",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("pillar.uncollected")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+		uncollected, err := z.Embedded.Pillar.GetUncollectedReward(kp.Address())
+		if err != nil {
+			fmt.Println("Error getting uncollected pillar reward(s):", err)
+			return err
+		}
+		if uncollected.Znn.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Znn, ZnnDecimals), "ZNN")
+		}
+		if uncollected.Qsr.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Qsr, ZnnDecimals), "QSR")
+		}
+		if uncollected.Znn.Sign() == 0 && uncollected.Qsr.Sign() == 0 {
+			fmt.Println("No rewards to collect")
+		}
+
 		return nil
 	},
 }
@@ -558,6 +697,157 @@ var znnCliSporkActivate = &cli.Command{
 		return nil
 	},
 }
+var znnCliSentinelUncollected = &cli.Command{
+	Name:  "sentinel.uncollected",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("sentinel.uncollected")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+		uncollected, err := z.Embedded.Sentinel.GetUncollectedReward(kp.Address())
+		if err != nil {
+			fmt.Println("Error getting uncollected sentinel reward(s):", err)
+			return err
+		}
+		if uncollected.Znn.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Znn, ZnnDecimals), "ZNN")
+		}
+		if uncollected.Qsr.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Qsr, ZnnDecimals), "QSR")
+		}
+		if uncollected.Znn.Sign() == 0 && uncollected.Qsr.Sign() == 0 {
+			fmt.Println("No rewards to collect")
+		}
+
+		return nil
+	},
+}
+
+var znnCliSentinelCollect = &cli.Command{
+	Name:  "sentinel.collect",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("sentinel.collect")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+		template, err := z.Embedded.Sentinel.CollectReward()
+		if err != nil {
+			fmt.Println("Error templating sentinel collect tx:", err)
+			return err
+		}
+		_, err = utils.Send(z, template, kp, false)
+		if err != nil {
+			fmt.Println("Error sending sentinel collect tx:", err)
+			return err
+		}
+
+		fmt.Println("Done")
+		fmt.Println("Use 'receiveAll' to collect your Sentinel reward(s) after 1 momentum")
+		return nil
+	},
+}
+
+var znnCliStakeUncollected = &cli.Command{
+	Name:  "stake.uncollected",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("stake.uncollected")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+		uncollected, err := z.Embedded.Stake.GetUncollectedReward(kp.Address())
+		if err != nil {
+			fmt.Println("Error getting uncollected stake reward(s):", err)
+			return err
+		}
+		if uncollected.Znn.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Znn, ZnnDecimals), "ZNN")
+		}
+		if uncollected.Qsr.Sign() != 0 {
+			fmt.Println(formatAmount(uncollected.Qsr, ZnnDecimals), "QSR")
+		}
+		if uncollected.Znn.Sign() == 0 && uncollected.Qsr.Sign() == 0 {
+			fmt.Println("No rewards to collect")
+		}
+
+		return nil
+	},
+}
+
+var znnCliStakeCollect = &cli.Command{
+	Name:  "stake.collect",
+	Usage: "",
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.NArg() != 0 {
+			fmt.Println("Incorrect number of arguments. Expected:")
+			fmt.Println("stake.collect")
+			return nil
+		}
+
+		kp, err := getZnnCliSigner(walletDir, cCtx)
+		if err != nil {
+			fmt.Println("Error getting signer:", err)
+			return err
+		}
+		z, err := connect(url, chainId)
+		if err != nil {
+			fmt.Println("Error connecting to Zenon Network:", err)
+			return err
+		}
+		template, err := z.Embedded.Stake.CollectReward()
+		if err != nil {
+			fmt.Println("Error templating stake collect tx:", err)
+			return err
+		}
+		_, err = utils.Send(z, template, kp, false)
+		if err != nil {
+			fmt.Println("Error sending stake collect tx:", err)
+			return err
+		}
+
+		fmt.Println("Done")
+		fmt.Println("Use 'receiveAll' to collect your stake reward(s) after 1 momentum")
+		return nil
+	},
+}
 
 var znnCliSubcommands = []*cli.Command{
 	znnCliBalance,
@@ -568,12 +858,19 @@ var znnCliSubcommands = []*cli.Command{
 	//		znnCliWalletDeriveAddresses,
 	znnCliPlasmaGet,
 	znnCliPillarList,
+	znnCliPillarUncollected,
 	znnCliPillarCollect,
 	znnCliPillarDelegate,
 	znnCliPillarUndelegate,
 	znnCliSporkList,
 	znnCliSporkCreate,
 	znnCliSporkActivate,
+	znnCliSentinelUncollected,
+	znnCliSentinelCollect,
+	znnCliStakeUncollected,
+	znnCliStakeCollect,
+	znnCliReceiveAll,
+	znnCliUnreceived,
 }
 
 var znnCliCommand = cli.Command{
