@@ -89,6 +89,7 @@ func main() {
 				Usage:       "A collection of helper utilities",
 				Subcommands: utilsSubcommands,
 			},
+			&devnetCommand,
 		},
 	}
 
