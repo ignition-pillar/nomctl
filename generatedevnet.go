@@ -42,7 +42,7 @@ var (
 
 	GenesisBlockFlag = cli.StringSliceFlag{
 		Name:  "genesis-block",
-		Usage: "<address>,<ZnnAmount>,<QsrAmount>",
+		Usage: "<address>/<ZnnAmount>/<QsrAmount>",
 	}
 
 	GenesisFusionFlag = cli.StringSliceFlag{
@@ -211,7 +211,7 @@ func validateDevnetFlags(ctx *cli.Context) error {
 
 			ss := strings.Split(s, "/")
 			if len(ss) != 3 {
-				return errors.New("genesis-block flags must be in the format --genesis-block=<address>,<znnAmount>,<qsrAmount>")
+				return errors.New("genesis-block flags must be in the format --genesis-block=<address>/<znnAmount>/<qsrAmount>")
 			}
 
 			a, err := types.ParseAddress(ss[0])
