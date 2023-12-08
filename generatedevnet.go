@@ -209,7 +209,7 @@ func validateDevnetFlags(ctx *cli.Context) error {
 		exists := make(map[types.Address]bool)
 		for _, s := range input {
 
-			ss := strings.Split(s, ",")
+			ss := strings.Split(s, "/")
 			if len(ss) != 3 {
 				return errors.New("genesis-block flags must be in the format --genesis-block=<address>,<znnAmount>,<qsrAmount>")
 			}
