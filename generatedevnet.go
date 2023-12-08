@@ -47,7 +47,7 @@ var (
 
 	GenesisFusionFlag = cli.StringSliceFlag{
 		Name:  "genesis-fusion",
-		Usage: "<address>,<QsrAmount>",
+		Usage: "<address>/<QsrAmount>",
 	}
 
 	// TODO
@@ -248,9 +248,9 @@ func validateDevnetFlags(ctx *cli.Context) error {
 		exists := make(map[types.Address]bool)
 		for _, s := range input {
 
-			ss := strings.Split(s, ",")
+			ss := strings.Split(s, "/")
 			if len(ss) != 2 {
-				return errors.New("genesis-fusion flags must be in the format --genesis-fusion=<address>,<qsrAmount>")
+				return errors.New("genesis-fusion flags must be in the format --genesis-fusion=<address>/<qsrAmount>")
 			}
 
 			a, err := types.ParseAddress(ss[0])
@@ -388,7 +388,7 @@ func createDevGenesis(ctx *cli.Context, cfg *node.Config) error {
 		input := ctx.StringSlice(GenesisBlockFlag.Name)
 		for _, s := range input {
 
-			ss := strings.Split(s, ",")
+			ss := strings.Split(s, "/")
 			a, _ := types.ParseAddress(ss[0])
 			z, _ := strconv.ParseInt(ss[1], 10, 64)
 			q, _ := strconv.ParseInt(ss[2], 10, 64)
@@ -414,7 +414,7 @@ func createDevGenesis(ctx *cli.Context, cfg *node.Config) error {
 		input := ctx.StringSlice(GenesisFusionFlag.Name)
 		for _, s := range input {
 
-			ss := strings.Split(s, ",")
+			ss := strings.Split(s, "/")
 			a, _ := types.ParseAddress(ss[0])
 			q, _ := strconv.ParseInt(ss[1], 10, 64)
 			qsr := big.NewInt(q * constants.Decimals)
